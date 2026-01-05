@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python scripts/verify.py:*)",
+      "Bash(where:*)",
+      "Bash(\"C:\\\\Users\\\\DELL\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" scripts/init_skill.py fastapi-guide --path ../)",
+      "Bash(set:*)",
+      "Bash(\"C:\\\\Users\\\\DELL\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" scripts/package_skill.py ../fastapi-guide ../../../)",
+      "Bash(zip:*)",
+      "Bash(\"C:\\\\Users\\\\DELL\\\\AppData\\\\Local\\\\Programs\\\\Python\\\\Python313\\\\python.exe\" package.py)"
+    ]
+  }
+}

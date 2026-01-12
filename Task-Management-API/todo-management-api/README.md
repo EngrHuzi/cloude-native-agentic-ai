@@ -35,7 +35,7 @@ A secure REST API for managing todo items built with **FastAPI**, **SQLModel**, 
 - **Pytest**: Testing framework with async support
 - **uv**: Fast Python package manager
 
-## project overview https://www.loom.com/share/c52ffbe9fa5044e6b64a23ea994460cf?t=141
+## project demo https://www.loom.com/share/b82f8a37d00240969f5bc7767c40a13a?t=151
 
 ## Prerequisites
 

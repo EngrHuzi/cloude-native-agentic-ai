@@ -13,21 +13,38 @@ from models import (
     TodoUpdate,
     TodoSummary,
     TodoStatus,
-    TodoPriority
+    TodoPriority,
+    User
 )
 from database import get_async_session
+from auth.dependencies import get_current_active_user
 
 
 router = APIRouter(prefix="/todos", tags=["todos"])
 
 
+@router.get("/debug-auth", tags=["debug"])
+async def debug_auth(current_user: User = Depends(get_current_active_user)):
+    """Debug endpoint to verify authentication is working"""
+    return {
+        "message": "Authentication successful!",
+        "user_id": current_user.id,
+        "username": current_user.username,
+        "email": current_user.email,
+        "is_active": current_user.is_active,
+        "created_at": current_user.created_at
+    }
+
+
 @router.post("/", response_model=TodoRead, status_code=201)
 async def create_todo(
     todo: TodoCreate,
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_active_user)
 ):
-    """Create a new todo"""
+    """Create a new todo for the authenticated user"""
     db_todo = Todo.model_validate(todo)
+    db_todo.user_id = current_user.id
     session.add(db_todo)
     await session.commit()
     await session.refresh(db_todo)
@@ -40,10 +57,11 @@ async def read_todos(
     limit: int = Query(default=100, le=100),
     status: TodoStatus | None = None,
     priority: TodoPriority | None = None,
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_active_user)
 ):
-    """Get all todos with optional filtering and pagination"""
-    query = select(Todo)
+    """Get all todos for the authenticated user with optional filtering and pagination"""
+    query = select(Todo).where(Todo.user_id == current_user.id)
 
     # Apply filters
     if status:
@@ -61,35 +79,49 @@ async def read_todos(
 
 @router.get("/summary", response_model=TodoSummary)
 async def get_todo_summary(
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_active_user)
 ):
-    """Get summary statistics of todos"""
+    """Get summary statistics of todos for the authenticated user"""
     # Total count
-    total_query = select(func.count(Todo.id))
+    total_query = select(func.count(Todo.id)).where(Todo.user_id == current_user.id)
     total_result = await session.execute(total_query)
     total = total_result.scalar() or 0
 
     # Count by status
-    todo_query = select(func.count(Todo.id)).where(Todo.status == TodoStatus.TODO)
+    todo_query = select(func.count(Todo.id)).where(
+        Todo.user_id == current_user.id,
+        Todo.status == TodoStatus.TODO
+    )
     todo_result = await session.execute(todo_query)
     todo_count = todo_result.scalar() or 0
 
-    in_progress_query = select(func.count(Todo.id)).where(Todo.status == TodoStatus.IN_PROGRESS)
+    in_progress_query = select(func.count(Todo.id)).where(
+        Todo.user_id == current_user.id,
+        Todo.status == TodoStatus.IN_PROGRESS
+    )
     in_progress_result = await session.execute(in_progress_query)
     in_progress_count = in_progress_result.scalar() or 0
 
-    completed_query = select(func.count(Todo.id)).where(Todo.status == TodoStatus.COMPLETED)
+    completed_query = select(func.count(Todo.id)).where(
+        Todo.user_id == current_user.id,
+        Todo.status == TodoStatus.COMPLETED
+    )
     completed_result = await session.execute(completed_query)
     completed_count = completed_result.scalar() or 0
 
     # High priority count
-    high_priority_query = select(func.count(Todo.id)).where(Todo.priority == TodoPriority.HIGH)
+    high_priority_query = select(func.count(Todo.id)).where(
+        Todo.user_id == current_user.id,
+        Todo.priority == TodoPriority.HIGH
+    )
     high_priority_result = await session.execute(high_priority_query)
     high_priority_count = high_priority_result.scalar() or 0
 
     # Overdue count
     now = datetime.utcnow()
     overdue_query = select(func.count(Todo.id)).where(
+        Todo.user_id == current_user.id,
         Todo.due_date < now,
         Todo.status != TodoStatus.COMPLETED
     )
@@ -109,11 +141,12 @@ async def get_todo_summary(
 @router.get("/{todo_id}", response_model=TodoRead)
 async def read_todo(
     todo_id: int,
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_active_user)
 ):
-    """Get a specific todo by ID"""
+    """Get a specific todo by ID for the authenticated user"""
     todo = await session.get(Todo, todo_id)
-    if not todo:
+    if not todo or todo.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Todo not found")
     return todo
 
@@ -122,11 +155,12 @@ async def read_todo(
 async def update_todo(
     todo_id: int,
     todo_update: TodoUpdate,
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_active_user)
 ):
-    """Update a todo"""
+    """Update a todo for the authenticated user"""
     db_todo = await session.get(Todo, todo_id)
-    if not db_todo:
+    if not db_todo or db_todo.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Todo not found")
 
     todo_data = todo_update.model_dump(exclude_unset=True)
@@ -154,11 +188,12 @@ async def update_todo(
 @router.delete("/{todo_id}")
 async def delete_todo(
     todo_id: int,
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_active_user)
 ):
-    """Delete a todo"""
+    """Delete a todo for the authenticated user"""
     todo = await session.get(Todo, todo_id)
-    if not todo:
+    if not todo or todo.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Todo not found")
 
     await session.delete(todo)
@@ -169,11 +204,12 @@ async def delete_todo(
 @router.post("/{todo_id}/complete", response_model=TodoRead)
 async def complete_todo(
     todo_id: int,
-    session: AsyncSession = Depends(get_async_session)
+    session: AsyncSession = Depends(get_async_session),
+    current_user: User = Depends(get_current_active_user)
 ):
-    """Mark a todo as completed"""
+    """Mark a todo as completed for the authenticated user"""
     db_todo = await session.get(Todo, todo_id)
-    if not db_todo:
+    if not db_todo or db_todo.user_id != current_user.id:
         raise HTTPException(status_code=404, detail="Todo not found")
 
     db_todo.status = TodoStatus.COMPLETED

@@ -4,7 +4,7 @@ SQLModel models for Todo Management API
 from datetime import datetime
 from typing import Optional
 from enum import Enum
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, Relationship
 
 
 class TodoStatus(str, Enum):
@@ -35,6 +35,12 @@ class Todo(SQLModel, table=True):
     completed_at: Optional[datetime] = Field(default=None)
     created_at: datetime = Field(default_factory=datetime.utcnow)
     updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # Foreign key to User
+    user_id: int = Field(foreign_key="users.id", index=True)
+
+    # Relationship
+    user: Optional["User"] = Relationship(back_populates="todos")
 
 
 # Schema Models for API
@@ -78,3 +84,39 @@ class TodoSummary(SQLModel):
     completed: int
     high_priority: int
     overdue: int
+
+
+# User Models
+
+class User(SQLModel, table=True):
+    """User database model"""
+    __tablename__ = "users"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    username: str = Field(unique=True, index=True, min_length=3, max_length=50)
+    email: str = Field(unique=True, index=True)
+    hashed_password: str = Field(min_length=1)
+    full_name: Optional[str] = Field(default=None, max_length=100)
+    is_active: bool = Field(default=True)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+    # Relationship
+    todos: list["Todo"] = Relationship(back_populates="user")
+
+
+class UserCreate(SQLModel):
+    """Schema for creating users"""
+    username: str = Field(min_length=3, max_length=50)
+    email: str
+    password: str = Field(min_length=8)
+    full_name: Optional[str] = Field(default=None, max_length=100)
+
+
+class UserRead(SQLModel):
+    """Schema for reading user data (public info only)"""
+    id: int
+    username: str
+    email: str
+    full_name: Optional[str]
+    is_active: bool
+    created_at: datetime

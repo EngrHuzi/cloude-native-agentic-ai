@@ -1,7 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(uv add:*)"
+      "Bash(uv add:*)",
+      "WebFetch(domain:agentfactory.panaversity.org)",
+      "Bash(python:*)"
     ]
   }
 }

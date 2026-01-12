@@ -1,9 +1,16 @@
 # Todo Management API
 
-A complete REST API for managing todo items built with **FastAPI**, **SQLModel**, and **PostgreSQL**. Features full CRUD operations, filtering, pagination, status tracking, and comprehensive test coverage.
+A secure REST API for managing todo items built with **FastAPI**, **SQLModel**, and **PostgreSQL**. Features user authentication with Argon2 password hashing, JWT tokens, full CRUD operations, filtering, pagination, and comprehensive test coverage.
 
 ## Features
 
+### 🔐 Security & Authentication
+- **Argon2 Password Hashing**: Industry-leading password security
+- **JWT Token Authentication**: Secure access and refresh tokens
+- **User Isolation**: Each user can only access their own todos
+- **Protected Endpoints**: All todo operations require authentication
+
+### ✅ Todo Management
 - **Complete CRUD Operations**: Create, Read, Update, Delete todos
 - **Status Management**: Todo, In Progress, Completed
 - **Priority Levels**: Low, Medium, High
@@ -11,6 +18,8 @@ A complete REST API for managing todo items built with **FastAPI**, **SQLModel**
 - **Filtering**: Filter by status and priority
 - **Pagination**: Efficient pagination for large datasets
 - **Summary Statistics**: Get overview of all todos
+
+### 🚀 Technical Features
 - **PostgreSQL Database**: Production-ready with async support
 - **Comprehensive Tests**: Full test coverage with pytest
 - **Auto-generated API Docs**: Interactive Swagger UI and ReDoc
@@ -20,9 +29,13 @@ A complete REST API for managing todo items built with **FastAPI**, **SQLModel**
 - **FastAPI**: Modern, fast web framework
 - **SQLModel**: SQL databases with Python type annotations
 - **PostgreSQL**: Production database with asyncpg driver
+- **pwdlib + Argon2**: Password hashing with the gold standard algorithm
+- **python-jose**: JWT token generation and verification
 - **Alembic**: Database migrations
 - **Pytest**: Testing framework with async support
 - **uv**: Fast Python package manager
+
+## project overview https://www.loom.com/share/c52ffbe9fa5044e6b64a23ea994460cf?t=141
 
 ## Prerequisites
 
@@ -95,9 +108,46 @@ The API will be available at:
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
 
+## 🔐 Authentication
+
+All todo endpoints require authentication. See [AUTH_GUIDE.md](AUTH_GUIDE.md) for complete documentation.
+
+### Quick Authentication Flow
+
+1. **Register a new user:**
+```bash
+curl -X POST "http://localhost:8000/auth/register" \
+  -H "Content-Type: application/json" \
+  -d '{"username": "john", "email": "john@example.com", "password": "securepass123"}'
+```
+
+2. **Login to get tokens:**
+```bash
+curl -X POST "http://localhost:8000/auth/login" \
+  -H "Content-Type: application/x-www-form-urlencoded" \
+  -d "username=john&password=securepass123"
+```
+
+3. **Use the access token in requests:**
+```bash
+curl -X GET "http://localhost:8000/todos/" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+**Note:** Access tokens expire after 30 minutes. Use refresh tokens to get new access tokens without re-login.
+
 ## API Endpoints
 
-### Todos
+### Authentication
+
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| POST | `/auth/register` | Register a new user | No |
+| POST | `/auth/login` | Login and get tokens | No |
+| POST | `/auth/refresh` | Refresh access token | No |
+| GET | `/auth/me` | Get current user info | Yes |
+
+### Todos (All require authentication)
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -118,10 +168,13 @@ The API will be available at:
 
 ## API Usage Examples
 
+**Note:** All todo endpoints require authentication. Get your token from `/auth/login` or `/auth/register` first.
+
 ### Create a Todo
 
 ```bash
 curl -X POST "http://localhost:8000/todos/" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "title": "Complete project documentation",
@@ -136,25 +189,30 @@ curl -X POST "http://localhost:8000/todos/" \
 
 ```bash
 # Basic
-curl "http://localhost:8000/todos/"
+curl "http://localhost:8000/todos/" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 
 # With filters
-curl "http://localhost:8000/todos/?status=todo&priority=high"
+curl "http://localhost:8000/todos/?status=todo&priority=high" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 
 # With pagination
-curl "http://localhost:8000/todos/?offset=0&limit=10"
+curl "http://localhost:8000/todos/?offset=0&limit=10" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ### Get Todo by ID
 
 ```bash
-curl "http://localhost:8000/todos/1"
+curl "http://localhost:8000/todos/1" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ### Update Todo
 
 ```bash
 curl -X PATCH "http://localhost:8000/todos/1" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
     "status": "in_progress",
@@ -165,19 +223,22 @@ curl -X PATCH "http://localhost:8000/todos/1" \
 ### Complete Todo
 
 ```bash
-curl -X POST "http://localhost:8000/todos/1/complete"
+curl -X POST "http://localhost:8000/todos/1/complete" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ### Delete Todo
 
 ```bash
-curl -X DELETE "http://localhost:8000/todos/1"
+curl -X DELETE "http://localhost:8000/todos/1" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ### Get Summary
 
 ```bash
-curl "http://localhost:8000/todos/summary"
+curl "http://localhost:8000/todos/summary" \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
 ```
 
 ## Running Tests
@@ -237,19 +298,41 @@ todo-management-api/
 ├── main.py                 # FastAPI application entry point
 ├── models.py              # SQLModel database models and schemas
 ├── database.py            # Database configuration and session
-├── routes.py              # API route handlers
+├── routes.py              # API route handlers for todos
+├── auth/                  # Authentication module
+│   ├── __init__.py
+│   ├── config.py         # Auth configuration settings
+│   ├── security.py       # Password hashing and JWT functions
+│   ├── schemas.py        # Auth-related schemas
+│   ├── dependencies.py   # Auth dependencies
+│   └── router.py         # Auth endpoints (register, login, etc.)
 ├── tests/                 # Test suite
 │   ├── __init__.py
 │   ├── conftest.py       # Pytest fixtures and configuration
 │   └── test_todos.py     # Todo API tests
 ├── pytest.ini            # Pytest configuration
 ├── .env.example          # Example environment variables
+├── .env                  # Environment variables (not in git)
 ├── .gitignore           # Git ignore rules
 ├── pyproject.toml       # Project dependencies (managed by uv)
+├── AUTH_GUIDE.md        # Complete authentication documentation
 └── README.md            # This file
 ```
 
 ## Data Models
+
+### User
+
+```python
+{
+  "id": 1,
+  "username": "john_doe",
+  "email": "john@example.com",
+  "full_name": "John Doe",
+  "is_active": true,
+  "created_at": "2024-01-01T10:00:00"
+}
+```
 
 ### Todo
 
@@ -263,7 +346,8 @@ todo-management-api/
   "due_date": "2024-12-31T23:59:59",
   "completed_at": null,
   "created_at": "2024-01-01T10:00:00",
-  "updated_at": "2024-01-01T10:00:00"
+  "updated_at": "2024-01-01T10:00:00",
+  "user_id": 1              # Foreign key to user
 }
 ```
 
@@ -272,6 +356,11 @@ todo-management-api/
 | Variable | Description | Default |
 |----------|-------------|---------|
 | `DATABASE_URL` | PostgreSQL connection string | `postgresql://postgres:postgres@localhost:5432/todo_db` |
+| `SECRET_KEY` | JWT secret key (generate with `openssl rand -hex 32`) | Required in production |
+| `ALGORITHM` | JWT algorithm | `HS256` |
+| `ACCESS_TOKEN_EXPIRE_MINUTES` | Access token lifetime | `30` |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | Refresh token lifetime | `7` |
+| `DEBUG` | Enable debug mode | `True` |
 
 ## Development
 
@@ -323,12 +412,16 @@ CMD ["uv", "run", "fastapi", "run", "main.py", "--host", "0.0.0.0", "--port", "8
 ### Environment Setup
 
 For production, ensure:
-1. Set `DEBUG=False` in environment
-2. Use strong database credentials
-3. Configure CORS appropriately in `main.py`
-4. Set up proper logging
-5. Use reverse proxy (nginx/caddy)
-6. Enable HTTPS
+1. **Generate a secure SECRET_KEY**: `openssl rand -hex 32`
+2. Set `DEBUG=False` in environment
+3. Use strong database credentials
+4. Configure CORS appropriately in `main.py`
+5. Set up proper logging
+6. Use reverse proxy (nginx/caddy)
+7. Enable HTTPS
+8. Rotate SECRET_KEY periodically
+9. Use secure password requirements
+10. Implement rate limiting on auth endpoints
 
 ## Troubleshooting
 

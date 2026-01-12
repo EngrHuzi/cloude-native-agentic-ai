@@ -2,6 +2,8 @@
 Todo Management API - FastAPI Application
 
 A complete REST API for managing todo items with:
+- User authentication with Argon2 password hashing
+- JWT token-based authorization
 - CRUD operations
 - Status and priority management
 - Due date tracking
@@ -14,6 +16,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from sqlmodel import SQLModel
 from database import async_engine
 from routes import router as todo_router
+from auth.router import router as auth_router
 
 
 @asynccontextmanager
@@ -28,8 +31,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Todo Management API",
-    description="A complete REST API for managing todo items with PostgreSQL",
-    version="1.0.0",
+    description="A secure REST API for managing todo items with user authentication and PostgreSQL",
+    version="2.0.0",
     lifespan=lifespan
 )
 
@@ -43,6 +46,7 @@ app.add_middleware(
 )
 
 # Include routers
+app.include_router(auth_router)
 app.include_router(todo_router)
 
 

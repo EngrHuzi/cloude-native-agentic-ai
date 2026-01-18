@@ -201,6 +201,10 @@ docker run -p 8000:8000 my-api
 
 Load these files as needed for detailed implementation:
 
+- **[middleware.md](references/middleware.md)** - Middleware patterns and configuration
+  - Read when: Adding CORS, request timing, logging, security headers, rate limiting
+  - Sections: CORSMiddleware, @app.middleware patterns, timing, security, common patterns
+
 - **[databases.md](references/databases.md)** (3.4k words) - Database integration patterns
   - Read when: Setting up database, adding models, implementing CRUD
   - Sections: SQLAlchemy, MongoDB, Redis, Alembic migrations
@@ -304,6 +308,39 @@ Load these files as needed for detailed implementation:
    async def protected(user = Depends(get_current_user)):
        return {"user": user.username}
    ```
+
+### Adding Middleware to Existing API
+
+1. Read references/middleware.md
+
+2. Add CORS for cross-origin requests:
+   ```python
+   from fastapi.middleware.cors import CORSMiddleware
+
+   app.add_middleware(
+       CORSMiddleware,
+       allow_origins=["http://localhost:3000"],
+       allow_credentials=True,
+       allow_methods=["*"],
+       allow_headers=["*"],
+   )
+   ```
+
+3. Add custom middleware for timing, logging, or security:
+   ```python
+   @app.middleware("http")
+   async def add_process_time(request: Request, call_next):
+       start_time = time.time()
+       response = await call_next(request)
+       response.headers["X-Process-Time"] = str(time.time() - start_time)
+       return response
+   ```
+
+4. See references/middleware.md for:
+   - Request timing and logging
+   - Security headers
+   - Rate limiting
+   - Request ID tracking
 
 ## Best Practices
 

@@ -1,6 +1,33 @@
 # Todo Management API
 
+[![Docker Hub](https://img.shields.io/docker/v/muhammadhuzaifa366/todo-management-api?label=Docker%20Hub&logo=docker)](https://hub.docker.com/r/muhammadhuzaifa366/todo-management-api)
+[![Docker Image Size](https://img.shields.io/docker/image-size/muhammadhuzaifa366/todo-management-api/latest)](https://hub.docker.com/r/muhammadhuzaifa366/todo-management-api)
+[![Docker Pulls](https://img.shields.io/docker/pulls/muhammadhuzaifa366/todo-management-api)](https://hub.docker.com/r/muhammadhuzaifa366/todo-management-api)
+
 A secure REST API for managing todo items built with **FastAPI**, **SQLModel**, and **PostgreSQL**. Features user authentication with Argon2 password hashing, JWT tokens, full CRUD operations, filtering, pagination, and comprehensive test coverage.
+
+## 🐳 Quick Start with Docker Hub
+
+Pull and run the pre-built image from Docker Hub:
+
+```bash
+# Pull the latest image
+docker pull muhammadhuzaifa366/todo-management-api:latest
+
+# Run with Docker Compose (Recommended)
+curl -O https://raw.githubusercontent.com/yourusername/todo-management-api/main/docker-compose.yaml
+docker compose up -d
+
+# Or run standalone (requires external PostgreSQL)
+docker run -p 8000:8000 \
+  -e DATABASE_URL=postgresql://user:pass@host:5432/dbname \
+  -e SECRET_KEY=$(openssl rand -hex 32) \
+  muhammadhuzaifa366/todo-management-api:latest
+```
+
+**🌐 Access the API**: http://localhost:8000/docs
+
+---
 
 ## Features
 
@@ -21,8 +48,10 @@ A secure REST API for managing todo items built with **FastAPI**, **SQLModel**, 
 
 ### 🚀 Technical Features
 - **PostgreSQL Database**: Production-ready with async support
+- **Docker Ready**: Production-optimized containers with multi-stage builds
 - **Comprehensive Tests**: Full test coverage with pytest
 - **Auto-generated API Docs**: Interactive Swagger UI and ReDoc
+- **Easy Deployment**: Deploy to any cloud platform with Docker
 
 ## Tech Stack
 
@@ -34,16 +63,107 @@ A secure REST API for managing todo items built with **FastAPI**, **SQLModel**, 
 - **Alembic**: Database migrations
 - **Pytest**: Testing framework with async support
 - **uv**: Fast Python package manager
+- **Docker**: Containerization with multi-stage builds
+- **Docker Compose**: Multi-container orchestration
 
 ## project demo https://www.loom.com/share/b82f8a37d00240969f5bc7767c40a13a?t=151
 
 ## Prerequisites
 
+### Option 1: Docker (Recommended - Easiest!)
+- Docker Desktop (Windows/Mac) or Docker Engine (Linux)
+- Docker Compose v2.0+
+
+### Option 2: Local Development
 - Python 3.11+
 - PostgreSQL 13+ **OR** NeonDB account (recommended - no local install needed!)
 - uv (Python package manager)
 
 ## Quick Start
+
+### 🐳 Option A: Docker (Recommended)
+
+The fastest way to get started! Everything runs in containers - no local Python or PostgreSQL installation needed.
+
+#### Method 1: Pull from Docker Hub (Fastest)
+
+```bash
+# Create a docker-compose.yaml file
+cat > docker-compose.yaml << 'EOF'
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: todo_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d todo_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: muhammadhuzaifa366/todo-management-api:latest
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/todo_db
+      SECRET_KEY: change-this-to-a-secure-random-key-in-production
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+      DEBUG: False
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+EOF
+
+# Start services
+docker compose up -d
+
+# View logs
+docker compose logs -f
+```
+
+#### Method 2: Build from Source
+
+```bash
+# Navigate to project directory
+cd todo-management-api
+
+# Copy Docker environment file
+cp .env.docker .env
+
+# (Optional) Edit .env to customize settings
+# nano .env
+
+# Build and start all services (API + PostgreSQL)
+docker compose up -d --build
+
+# View logs
+docker compose logs -f
+
+# Stop services
+docker compose down
+```
+
+**That's it!** The API is now running at:
+- **API**: http://localhost:8000
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+**📖 For detailed Docker documentation, see [DOCKER_README.md](DOCKER_README.md)**
+
+---
+
+### 💻 Option B: Local Development
 
 ### 1. Clone and Setup
 
@@ -310,12 +430,18 @@ todo-management-api/
 │   ├── __init__.py
 │   ├── conftest.py       # Pytest fixtures and configuration
 │   └── test_todos.py     # Todo API tests
+├── Dockerfile            # Multi-stage production Docker build
+├── docker-compose.yaml   # Docker Compose configuration (API + PostgreSQL)
+├── .dockerignore        # Docker build context exclusions
 ├── pytest.ini            # Pytest configuration
-├── .env.example          # Example environment variables
+├── .env.example          # Example environment variables (local)
+├── .env.docker           # Example environment variables (Docker)
 ├── .env                  # Environment variables (not in git)
 ├── .gitignore           # Git ignore rules
 ├── pyproject.toml       # Project dependencies (managed by uv)
+├── uv.lock              # Dependency lock file
 ├── AUTH_GUIDE.md        # Complete authentication documentation
+├── DOCKER_README.md     # Complete Docker setup guide
 └── README.md            # This file
 ```
 
@@ -389,39 +515,220 @@ uv add --dev package-name
 
 ## Deployment
 
-### Using Docker (Recommended)
+### 🐳 Docker Deployment (Production-Ready)
 
-```dockerfile
-FROM python:3.11-slim
+The project includes production-ready Docker configuration with multi-stage builds, security hardening, and PostgreSQL database.
 
-WORKDIR /app
+**Docker Hub Image**: `muhammadhuzaifa366/todo-management-api`
 
-# Install uv
-RUN pip install uv
+#### Available Tags
+- `latest` - Latest stable version
+- `v1.0.0` - Specific version (recommended for production)
 
-# Copy project files
-COPY . .
+#### Files Included
+- `Dockerfile` - Multi-stage production build (~160MB optimized image)
+- `docker-compose.yaml` - Full stack with API + PostgreSQL
+- `.dockerignore` - Optimized build context
+- `.env.docker` - Environment template for Docker
+- `DOCKER_README.md` - Complete Docker documentation
 
-# Install dependencies
-RUN uv sync
+#### Quick Deploy Option 1: Use Pre-built Image (Recommended)
 
-# Run application
-CMD ["uv", "run", "fastapi", "run", "main.py", "--host", "0.0.0.0", "--port", "8000"]
+```bash
+# 1. Create docker-compose.yaml with the public image
+cat > docker-compose.yaml << 'EOF'
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-strong-password-here}
+      POSTGRES_DB: todo_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d todo_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    image: muhammadhuzaifa366/todo-management-api:v1.0.0
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-strong-password-here}@postgres:5432/todo_db
+      SECRET_KEY: ${SECRET_KEY}
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      REFRESH_TOKEN_EXPIRE_DAYS: 7
+      DEBUG: False
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+EOF
+
+# 2. Create .env file with secure credentials
+cat > .env << 'EOF'
+POSTGRES_PASSWORD=$(openssl rand -hex 16)
+SECRET_KEY=$(openssl rand -hex 32)
+EOF
+
+# Or manually set:
+echo "POSTGRES_PASSWORD=your-strong-password" > .env
+echo "SECRET_KEY=$(openssl rand -hex 32)" >> .env
+
+# 3. Start services
+docker compose up -d
+
+# 4. Verify
+docker compose ps
+curl http://localhost:8000/health
 ```
 
-### Environment Setup
+#### Quick Deploy Option 2: Build from Source
 
-For production, ensure:
-1. **Generate a secure SECRET_KEY**: `openssl rand -hex 32`
-2. Set `DEBUG=False` in environment
-3. Use strong database credentials
-4. Configure CORS appropriately in `main.py`
-5. Set up proper logging
-6. Use reverse proxy (nginx/caddy)
-7. Enable HTTPS
-8. Rotate SECRET_KEY periodically
-9. Use secure password requirements
-10. Implement rate limiting on auth endpoints
+```bash
+# 1. Copy environment file
+cp .env.docker .env
+
+# 2. Generate secure SECRET_KEY
+openssl rand -hex 32
+# Copy the output and update SECRET_KEY in .env
+
+# 3. Edit .env with production values
+nano .env
+# Update: POSTGRES_PASSWORD, SECRET_KEY, DEBUG=False
+
+# 4. Build and start services
+docker compose up -d --build
+
+# 5. Verify services are running
+docker compose ps
+docker compose logs -f
+
+# 6. Test API
+curl http://localhost:8000/health
+```
+
+#### Docker Features
+- **Multi-stage build**: Optimized image size (builder + production)
+- **Security**: Non-root user, minimal attack surface
+- **Health checks**: Both API and database monitored
+- **PostgreSQL 16**: With persistent volumes
+- **Auto-restart**: Containers restart on failure
+- **Network isolation**: Services on private network
+
+#### Production Deployment Platforms
+
+**1. Ubuntu/Linux Server (Using Docker Hub Image)**
+```bash
+# Install Docker
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+# Create deployment directory
+mkdir todo-api && cd todo-api
+
+# Create docker-compose.yaml
+cat > docker-compose.yaml << 'EOF'
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: todo_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  api:
+    image: muhammadhuzaifa366/todo-management-api:v1.0.0
+    ports:
+      - "8000:8000"
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@postgres:5432/todo_db
+      SECRET_KEY: ${SECRET_KEY}
+    depends_on:
+      - postgres
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+EOF
+
+# Create .env file
+echo "POSTGRES_PASSWORD=$(openssl rand -hex 16)" > .env
+echo "SECRET_KEY=$(openssl rand -hex 32)" >> .env
+
+# Deploy
+docker compose up -d
+```
+
+**2. Cloud Platforms**
+
+**Using Pre-built Docker Hub Image:**
+- **Railway**: Use Docker image `muhammadhuzaifa366/todo-management-api:v1.0.0`
+- **Render**: Use Docker image in Web Service settings
+- **Fly.io**:
+  ```bash
+  flyctl launch --image muhammadhuzaifa366/todo-management-api:v1.0.0
+  flyctl deploy
+  ```
+- **AWS ECS**: Reference `muhammadhuzaifa366/todo-management-api:v1.0.0` in task definition
+- **Google Cloud Run**:
+  ```bash
+  gcloud run deploy todo-api \
+    --image muhammadhuzaifa366/todo-management-api:v1.0.0 \
+    --platform managed
+  ```
+- **DigitalOcean App Platform**: Use Docker Hub image in app spec
+
+**Building from Source:**
+- Clone repository and use provided Dockerfile
+- All platforms support custom Dockerfile builds
+
+See [DOCKER_README.md](DOCKER_README.md) for detailed deployment guides.
+
+### Environment Setup for Production
+
+**Critical Security Steps:**
+
+1. **Generate secure SECRET_KEY**
+   ```bash
+   openssl rand -hex 32
+   ```
+
+2. **Update .env file**
+   ```bash
+   SECRET_KEY=<generated-key-from-step-1>
+   POSTGRES_PASSWORD=<strong-unique-password>
+   DEBUG=False
+   ```
+
+3. **Database Configuration**
+   - Use strong passwords (min 16 characters)
+   - Enable SSL/TLS for database connections
+   - Regular backups (automated)
+
+4. **Application Security**
+   - Configure CORS appropriately in `main.py`
+   - Set up proper logging
+   - Use reverse proxy (nginx/caddy) with rate limiting
+   - Enable HTTPS with valid SSL certificates
+   - Implement rate limiting on auth endpoints
+
+5. **Monitoring & Maintenance**
+   - Set up health check monitoring
+   - Configure log aggregation
+   - Rotate SECRET_KEY periodically
+   - Keep dependencies updated
+   - Regular security audits
 
 ## Troubleshooting
 
@@ -453,6 +760,39 @@ rm -rf .pytest_cache
 uv run pytest -vv
 ```
 
+### Docker Issues
+
+```bash
+# View container logs
+docker compose logs -f api
+docker compose logs -f postgres
+
+# Restart services
+docker compose restart
+
+# Rebuild from scratch
+docker compose down
+docker compose build --no-cache
+docker compose up -d
+
+# Check container status
+docker compose ps
+
+# Access container shell
+docker compose exec api bash
+docker compose exec postgres psql -U postgres -d todo_db
+
+# Port already in use
+docker compose down
+# Or change port in .env: API_PORT=8080
+
+# Clean up everything
+docker compose down -v  # Warning: Deletes database data!
+docker system prune -a
+```
+
+**For detailed Docker troubleshooting, see [DOCKER_README.md](DOCKER_README.md)**
+
 ## Contributing
 
 1. Fork the repository
@@ -460,6 +800,43 @@ uv run pytest -vv
 3. Write tests for new features
 4. Ensure all tests pass
 5. Submit a pull request
+
+## For Maintainers: Updating Docker Hub
+
+When you make changes and want to publish a new version to Docker Hub:
+
+```bash
+# 1. Make your code changes and test locally
+docker compose build
+docker compose up -d
+# Test thoroughly...
+
+# 2. Login to Docker Hub (if not already logged in)
+docker login
+
+# 3. Tag the new version
+VERSION="v1.0.1"  # Increment version number
+docker tag todo-management-api-api:latest muhammadhuzaifa366/todo-management-api:$VERSION
+docker tag todo-management-api-api:latest muhammadhuzaifa366/todo-management-api:latest
+
+# 4. Push to Docker Hub
+docker push muhammadhuzaifa366/todo-management-api:$VERSION
+docker push muhammadhuzaifa366/todo-management-api:latest
+
+# 5. Update README.md
+# - Update version numbers in deployment examples
+# - Update CHANGELOG if you have one
+```
+
+**Version Tagging Convention:**
+- `latest` - Always points to the most recent stable release
+- `v1.0.0` - Semantic versioning (MAJOR.MINOR.PATCH)
+  - MAJOR: Breaking changes
+  - MINOR: New features, backwards compatible
+  - PATCH: Bug fixes, backwards compatible
+
+**GitHub Actions (Optional):**
+You can automate this process by setting up GitHub Actions to automatically build and push to Docker Hub on new releases.
 
 ## License
 
@@ -475,3 +852,5 @@ For issues and questions:
 ---
 
 **Built with FastAPI, SQLModel, and PostgreSQL** 🚀
+
+**Available on Docker Hub**: [muhammadhuzaifa366/todo-management-api](https://hub.docker.com/r/muhammadhuzaifa366/todo-management-api)
